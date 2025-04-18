@@ -1,0 +1,238 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Schicht-Gehaltszähler</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: #f0f0f0;
+    }
+    #status {
+      font-size: 1.2em;
+      margin-top: 20px;
+    }
+    #counter {
+      font-size: 2em;
+      color: green;
+      margin-top: 10px;
+    }
+    #monatsübersicht {
+      margin-top: 20px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+    table, th, td {
+      border: 1px solid black;
+    }
+    th, td {
+      padding: 8px;
+      text-align: center;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+  </style>
+</head>
+<body>
+  <h1>Schicht-Gehaltszähler</h1>
+  <div id="status">Warte auf Standortbestimmung...</div>
+  <div id="counter">0,00 €</div>
+
+  <div id="monatsübersicht">
+    <h2>Monatsübersicht</h2>
+    <table id="table">
+      <thead>
+        <tr>
+          <th>Datum</th>
+          <th>Verdienst (€)</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody">
+        <!-- Hier werden die täglichen Verdienste eingefügt -->
+      </tbody>
+    </table>
+  </div>
+
+  <button onclick="exportiereCSV()">CSV Exportieren</button>
+
+  <script>
+    const STUNDENLOHN = 10.40;
+    const SEKUNDENLOHN = STUNDENLOHN / 3600;
+    const ZIEL_LAT = 52.3900;
+    const ZIEL_LON = 13.0650;
+    const RADIUS = 0.2;
+
+    let timer = null;
+    let verdienst = 0;
+    let zählerGestartet = false;
+
+    function entfernung(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    function istImZeitraum(startStunde, startMinute, endStunde, endMinute) {
+      const jetzt = new Date();
+      const start = new Date(jetzt);
+      start.setHours(startStunde, startMinute, 0);
+      const ende = new Date(jetzt);
+      ende.setHours(endStunde, endMinute, 0);
+      return jetzt >= start && jetzt <= ende;
+    }
+
+    function starteZaehler(schichtStartUhrzeit) {
+      if (timer) return;
+      const jetzt = new Date();
+      const start = new Date(jetzt);
+      start.setHours(...schichtStartUhrzeit.split(':').map(Number), 0);
+      const delay = start - jetzt;
+      if (delay > 0) {
+        setTimeout(() => {
+          zählerGestartet = true;
+          timer = setInterval(updateVerdienst, 1000);
+          document.getElementById('status').innerText = "Zähler läuft.";
+        }, delay);
+        document.getElementById('status').innerText = "Zähler startet um " + schichtStartUhrzeit;
+      } else {
+        zählerGestartet = true;
+        timer = setInterval(updateVerdienst, 1000);
+        document.getElementById('status').innerText = "Zähler gestartet.";
+      }
+    }
+
+    function updateVerdienst() {
+      verdienst += SEKUNDENLOHN;
+      document.getElementById('counter').innerText = verdienst.toFixed(2).replace('.', ',') + ' €';
+    }
+
+    function speichereVerdienst(tag, betrag) {
+      const gespeicherteDaten = JSON.parse(localStorage.getItem('monatsVerdienst') || '{}');
+      gespeicherteDaten[tag] = betrag;
+      localStorage.setItem('monatsVerdienst', JSON.stringify(gespeicherteDaten));
+      updateMonatsübersicht();
+    }
+
+    function updateMonatsübersicht() {
+      const gespeicherteDaten = JSON.parse(localStorage.getItem('monatsVerdienst') || '{}');
+      const tableBody = document.getElementById('tableBody');
+      tableBody.innerHTML = '';
+      let gesamt = 0;
+      for (const [datum, betrag] of Object.entries(gespeicherteDaten)) {
+        gesamt += betrag;
+        const row = document.createElement('tr');
+        const datumCell = document.createElement('td');
+        datumCell.innerText = datum;
+        const betragCell = document.createElement('td');
+        betragCell.innerText = betrag.toFixed(2).replace('.', ',') + ' €';
+        row.appendChild(datumCell);
+        row.appendChild(betragCell);
+        tableBody.appendChild(row);
+      }
+    }
+
+    function exportiereCSV() {
+      const gespeicherteDaten = JSON.parse(localStorage.getItem('monatsVerdienst') || '{}');
+      let csvContent = "Datum,Verdienst (€)
+";
+      for (const [datum, betrag] of Object.entries(gespeicherteDaten)) {
+        csvContent += `${datum},${betrag.toFixed(2).replace('.', ',')}
+`;
+      }
+      const blob = new Blob([csvContent], { type: "text/csv" });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = "monatsverdienst.csv";
+      link.click();
+    }
+
+    function pruefeStandortUndZeit() {
+      if (!navigator.geolocation) {
+        manuelleAbfrageSpäter();
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(position => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        const dist = entfernung(lat, lon, ZIEL_LAT, ZIEL_LON);
+
+        if (dist <= RADIUS) {
+          if (istImZeitraum(6, 0, 8, 0)) {
+            starteZaehler("07:00");
+          } else if (istImZeitraum(13, 30, 16, 0)) {
+            starteZaehler("14:30");
+          } else {
+            document.getElementById('status').innerText = "Nicht im Schichtzeitraum.";
+          }
+        } else {
+          document.getElementById('status').innerText = "Nicht am Arbeitsplatz.";
+          manuelleAbfrageSpäter();
+        }
+      }, () => {
+        document.getElementById('status').innerText = "Standort nicht abrufbar.";
+        manuelleAbfrageSpäter();
+      });
+    }
+
+    function manuelleAbfrageSpäter() {
+      const jetzt = new Date();
+      const zeitBisAbfrage = new Date(jetzt);
+      zeitBisAbfrage.setHours(20, 0, 0);
+      const delay = zeitBisAbfrage - jetzt;
+      if (delay > 0) {
+        setTimeout(() => {
+          if (!zählerGestartet) {
+            frageNachSchicht();
+          }
+        }, delay);
+      } else {
+        if (!zählerGestartet) {
+          frageNachSchicht();
+        }
+      }
+    }
+
+    function frageNachSchicht() {
+      const auswahl = prompt("Welche Schicht hattest du heute?
+1 = Frühschicht
+2 = Spätschicht
+3 = Frei");
+      const heute = new Date().toISOString().split('T')[0];
+      if (auswahl === "1") {
+        speichereVerdienst(heute, 10.40 * 8);
+        document.getElementById('status').innerText = "Frühschicht manuell eingetragen.";
+      } else if (auswahl === "2") {
+        speichereVerdienst(heute, 10.40 * 8);
+        document.getElementById('status').innerText = "Spätschicht manuell eingetragen.";
+      } else {
+        speichereVerdienst(heute, 0);
+        document.getElementById('status').innerText = "Frei eingetragen.";
+      }
+    }
+
+    pruefeStandortUndZeit();
+    setInterval(pruefeStandortUndZeit, 60 * 60 * 1000);
+  </script>
+</body>
+</html>
