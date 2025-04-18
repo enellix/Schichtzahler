@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gehaltszähler</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            padding: 50px;
+            background-color: #f4f4f4;
+        }
+        h1 {
+            color: #333;
+        }
+        #counter {
+            font-size: 2em;
+            margin: 20px 0;
+        }
+        button {
+            font-size: 1.2em;
+            padding: 10px 20px;
+            margin: 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live Gehaltszähler</h1>
+    <div id="counter">0,00 €</div>
+    <button onclick="startCounter()">Start</button>
+    <button onclick="stopCounter()">Stopp</button>
+
+    <script>
+        let interval;
+        let totalCents = 0;
+        const centsPerSecond = 14 * 100 / 3600; // 14 €/h in Cent pro Sekunde
+
+        function updateDisplay() {
+            const euros = (totalCents / 100).toFixed(2).replace('.', ',');
+            document.getElementById('counter').innerText = euros + ' €';
+        }
+
+        function startCounter() {
+            if (!interval) {
+                interval = setInterval(() => {
+                    totalCents += centsPerSecond;
+                    updateDisplay();
+                }, 1000);
+            }
+        }
+
+        function stopCounter() {
+            clearInterval(interval);
+            interval = null;
+        }
+    </script>
+</body>
+</html>
