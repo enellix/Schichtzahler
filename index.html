@@ -1,0 +1,111 @@
+
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gehaltszähler</title>
+    <style>
+        :root {
+            --bg-color: #f9f9f9;
+            --text-color: #1c1c1e;
+            --accent-color: #007aff;
+            --button-bg: #007aff;
+            --button-text: #ffffff;
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 2rem;
+            font-family: var(--font);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        #counter {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin: 2rem 0;
+        }
+
+        button, select {
+            font-size: 1rem;
+            padding: 0.8rem 1.5rem;
+            margin: 0.5rem;
+            border: none;
+            border-radius: 12px;
+            background-color: var(--button-bg);
+            color: var(--button-text);
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover, select:hover {
+            background-color: #005ecb;
+        }
+
+        select {
+            background-color: #e5e5ea;
+            color: var(--text-color);
+            font-weight: 500;
+        }
+
+        label {
+            font-weight: 500;
+            font-size: 1rem;
+        }
+    </style>
+</head>
+<body>
+    <h1>Live Gehaltszähler</h1>
+
+    <label for="mode">Berechnung:</label>
+    <select id="mode" onchange="setRate()">
+        <option value="brutto">Brutto (14,00 €/h)</option>
+        <option value="netto">Netto (ca. 10,50 €/h)</option>
+    </select>
+
+    <div id="counter">0,00 €</div>
+    <button onclick="startCounter()">Start</button>
+    <button onclick="stopCounter()">Stopp</button>
+
+    <script>
+        let interval;
+        let totalCents = 0;
+        let centsPerSecond = 1400 / 3600;
+
+        function setRate() {
+            const mode = document.getElementById('mode').value;
+            centsPerSecond = mode === 'brutto' ? 1400 / 3600 : 1050 / 3600;
+        }
+
+        function updateDisplay() {
+            const euros = (totalCents / 100).toFixed(2).replace('.', ',');
+            document.getElementById('counter').innerText = euros + ' €';
+        }
+
+        function startCounter() {
+            if (!interval) {
+                interval = setInterval(() => {
+                    totalCents += centsPerSecond;
+                    updateDisplay();
+                }, 1000);
+            }
+        }
+
+        function stopCounter() {
+            clearInterval(interval);
+            interval = null;
+        }
+
+        setRate();
+    </script>
+</body>
+</html>
