@@ -87,22 +87,22 @@
             const mode = document.getElementById('mode').value;
             switch (mode) {
                 case 'lennart_brutto':
-                    centsPerSecond = 1400 / 3600;
+                    centsPerSecond = 140000 / 3600;
                     break;
                 case 'lennart_netto':
-                    centsPerSecond = 1050 / 3600;
+                    centsPerSecond = 105000 / 3600;
                     break;
                 case 'maisha_brutto':
-                    centsPerSecond = 478 / 3600;
+                    centsPerSecond = 47800 / 3600;
                     break;
                 case 'maisha_netto':
-                    centsPerSecond = 399 / 3600;
+                    centsPerSecond = 39900 / 3600;
                     break;
             }
         }
 
         function updateDisplay() {
-            const euros = (totalCents / 100).toFixed(2).replace('.', ',');
+            const euros = (totalCents / 10000).toFixed(2).replace('.', ',');
             document.getElementById('counter').innerText = euros + ' €';
         }
 
